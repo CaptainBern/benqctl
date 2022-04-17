@@ -18,16 +18,6 @@ enum command {
   C_P3,
 };
 
-// The state we are currently in.
-enum state {
-  S_READY,
-  S_ONE,
-  S_TWO,
-};
-
-volatile enum state current_state = S_READY;
-volatile enum command current_cmd = C_EXIT;
-
 // An array with the first and second argument for each command.
 static const byte command_data[8][2] = {
   {0x10, 0x00}, // C_EXIT
@@ -40,26 +30,74 @@ static const byte command_data[8][2] = {
   {0x04, 0x00}, // C_P3
 };
 
+// Represents all possible states.
+enum state {
+  S_0,
+  S_1,
+  S_2,
+};
+
+volatile bool busy                = false;
+volatile enum state state         = S_0;
+volatile enum command current_cmd = C_EXIT;
+
 // Set up to send a command to the monitor.
-void sendCommand(enum command cmd)
+// Returns true if the command is being sent, false otherwise.
+bool sendCommand(enum command cmd)
 {
-  current_cmd = cmd;
-  digitalWrite(INT, HIGH);
+  // Only touch the globals if we aren't currently executing a command.
+  if (!busy) {
+    current_cmd = cmd;
+    busy = true;
+
+    // Setting INT to high will make the monitor query us.
+    digitalWrite(INT, HIGH);
+  }
+
+  return busy;
 }
 
+// Handle an I2C request event. Depending on our state,
+// the monitor expects a different reply.
+void handleRequest()
+{
+  // We only take requests if we are sending a command.
+  if (!busy) {
+    return;
+  }
+  
+  switch (state) {
+    case S_0:
+      Wire.write(0x1);
+      break;
+    case S_1:
+      Wire.write(command_data[current_cmd][0]);
+      break;
+    case S_2:
+      Wire.write(command_data[current_cmd][1]);
+      break; 
+  }
+}
+
+// Handles I2C receive events.
 void handleReceive(int n)
 {
+  // We only accept data if we are sending a command.
+  if (!busy) {
+    return;
+  }
+
   if (n == 1) {
     int i = Wire.read();
     switch (i) {
       case 0x00:
-        current_state = S_ONE;
+        state = S_1;
         break;
       case 0x01:
-        current_state = S_TWO;
+        state = S_2;
         break;
       case 0x02:
-        current_state = S_READY;
+        state = S_0;
         break;
       default:
         goto err_unknown_data;
@@ -68,6 +106,16 @@ void handleReceive(int n)
     int i = Wire.read();
     int j = Wire.read();
     if (i == 0 && j == 0) {
+      // Command done, so no longer busy.
+      busy = false;
+
+      // This should have already happened in the previous block,
+      // but just in case something went wrong, making sure we're
+      // in S_0 pretty much guarantees next commands won't get
+      // messed up.
+      state = S_0;
+
+      // The command is finished so set INT low.
       digitalWrite(INT, LOW);
     } else {
       goto err_unknown_data;
@@ -79,41 +127,18 @@ err_unknown_data:
   Serial.println("Unexpected data!");
 }
 
-void handleRequest()
-{
-  Serial.println("got request");
-  switch (current_state) {
-    case S_READY:
-      Serial.println("\tIDLE");
-      Wire.write(0x1);
-      break;
-    case S_ONE:
-      Serial.println("\tONE");
-      Wire.write(command_data[current_cmd][0]);
-      break;
-    case S_TWO:
-      Serial.println("\tTWO");
-      Wire.write(command_data[current_cmd][1]);
-      break;
-    default:
-      Serial.println("idk man");  
-  }
-}
-
 void setup()
 {
   // Interrupt pin
   pinMode(INT, OUTPUT);
 
   // Setup I2C
-  Wire.onReceive(handleReceive);
   Wire.onRequest(handleRequest);
+  Wire.onReceive(handleReceive);
   Wire.begin(ADDRESS);
 
   Serial.begin(9600);
   while (!Serial); // Wait for serial monitor
-
-  sendCommand(C_P1);
 }
 
 void loop()
