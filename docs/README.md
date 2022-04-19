@@ -15,27 +15,27 @@ Here's a capture of the 'exit' button being pressed:
 ## Protocol
 
 The S Switch (at least my version) supports the following 'commands':
-    - exit
-    - select (wheel click)
-    - scroll down
-    - scroll up
-    - auto
-    - profile 1
-    - profile 2
-    - profile 3
+- exit
+- select (wheel click)
+- scroll down
+- scroll up
+- auto
+- profile 1
+- profile 2
+- profile 3
 
 The communication is as follows:
-    1. user clicks button
-    2. `INT` set high
-    3. monitor sends `0x00`
-    4. switch replies `0x01`
-    5. monitor sends `0x01`
-    6. switch replies with byte (value depends on command)
-    7. monitor sends `0x02`
-    8. switch replies with byte (value depends on command)
-    9. monitor sends `0x00`
-    10. monitor sends `0x00`
-    11. switch sets `INT` low.
+1. user clicks button
+2. `INT` set high
+3. monitor sends `0x00`
+4. switch replies `0x01`
+5. monitor sends `0x01`
+6. switch replies with byte (value depends on command)
+7. monitor sends `0x02`
+8. switch replies with byte (value depends on command)
+9. monitor sends `0x00`
+10. monitor sends `0x00`
+11. switch sets `INT` low.
 
 ### Commands
 
