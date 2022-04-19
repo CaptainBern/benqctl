@@ -106,14 +106,11 @@ void handleReceive(int n)
     int i = Wire.read();
     int j = Wire.read();
     if (i == 0 && j == 0) {
+      // Reset the state just in case.
+      state = S_0;
+
       // Command done, so no longer busy.
       busy = false;
-
-      // This should have already happened in the previous block,
-      // but just in case something went wrong, making sure we're
-      // in S_0 pretty much guarantees next commands won't get
-      // messed up.
-      state = S_0;
 
       // The command is finished so set INT low.
       digitalWrite(INT, LOW);
