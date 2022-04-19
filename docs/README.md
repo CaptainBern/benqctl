@@ -3,7 +3,8 @@
 The S Switch uses [I2C](https://en.wikipedia.org/wiki/I%C2%B2C) to communicate with
 the monitor.
 
-The monitor functions as the controller (or master) while the S Switch is a peripheral (or slave).
+The monitor functions as the controller (or master) while the S Switch is a peripheral (or slave)
+with address `0x28`.
 When a button is pressed on the S Switch, the interrupt pin is set high. Afterwards the monitor will
 begin sending requests to the S Switch. When the 'command' (a button press) is finished, the interrupt pin
 will be set low again.
